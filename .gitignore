@@ -1,0 +1,25 @@
+# Build outputs
+bin/
+obj/
+
+# Azure Developer CLI
+.azure/
+
+# User-specific files
+*.user
+*.suo
+.vs/
+
+# Local settings (contains secrets)
+local.settings.json
+
+# NuGet
+*.nupkg
+packages/
+
+# Rider
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

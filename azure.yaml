@@ -1,0 +1,15 @@
+name: moderntodo-api
+metadata:
+  template: moderntodo-api@0.0.1
+
+services:
+  api:
+    project: ./src/BlazorTodo.Api
+    language: csharp
+    host: function
+    dist: bin/Release/net8.0/publish
+
+infra:
+  provider: bicep
+  path: ./infra
+  module: main
