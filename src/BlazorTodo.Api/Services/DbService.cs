@@ -1,4 +1,5 @@
 using Azure.Storage.Blobs;
+using Dapper;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 
@@ -84,19 +85,30 @@ public class DbService
     {
         await using var connection = new SqliteConnection($"Data Source={_dbPath}");
         await connection.OpenAsync();
-        var sql = """
+        var createSql = """
             CREATE TABLE IF NOT EXISTS Tasks (
                 Id          INTEGER PRIMARY KEY AUTOINCREMENT,
                 Title       TEXT    NOT NULL,
                 Description TEXT,
                 DueDate     TEXT,
+                TaskTime    TEXT,
                 Priority    INTEGER NOT NULL DEFAULT 1,
                 IsCompleted INTEGER NOT NULL DEFAULT 0,
                 CreatedAt   TEXT    NOT NULL
             );
             """;
         await using var cmd = connection.CreateCommand();
-        cmd.CommandText = sql;
+        cmd.CommandText = createSql;
         await cmd.ExecuteNonQueryAsync();
+
+        // Migrate existing databases that predate the TaskTime column.
+        var columnExists = await connection.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM pragma_table_info('Tasks') WHERE name = 'TaskTime';");
+        if (columnExists == 0)
+        {
+            await using var alterCmd = connection.CreateCommand();
+            alterCmd.CommandText = "ALTER TABLE Tasks ADD COLUMN TaskTime TEXT;";
+            await alterCmd.ExecuteNonQueryAsync();
+        }
     }
 }

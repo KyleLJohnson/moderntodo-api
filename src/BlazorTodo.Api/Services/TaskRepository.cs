@@ -31,8 +31,8 @@ public class TaskRepository
         await using var conn = await _db.GetOpenConnectionAsync();
         var id = await conn.ExecuteScalarAsync<int>(
             """
-            INSERT INTO Tasks (Title, Description, DueDate, Priority, IsCompleted, CreatedAt)
-            VALUES (@Title, @Description, @DueDate, @Priority, @IsCompleted, @CreatedAt);
+            INSERT INTO Tasks (Title, Description, DueDate, TaskTime, Priority, IsCompleted, CreatedAt)
+            VALUES (@Title, @Description, @DueDate, @TaskTime, @Priority, @IsCompleted, @CreatedAt);
             SELECT last_insert_rowid();
             """,
             task);
@@ -50,6 +50,7 @@ public class TaskRepository
                 Title       = @Title,
                 Description = @Description,
                 DueDate     = @DueDate,
+                TaskTime    = @TaskTime,
                 Priority    = @Priority,
                 IsCompleted = @IsCompleted
             WHERE Id = @Id
@@ -59,6 +60,7 @@ public class TaskRepository
                 updated.Title,
                 updated.Description,
                 updated.DueDate,
+                updated.TaskTime,
                 updated.Priority,
                 updated.IsCompleted,
                 Id = id

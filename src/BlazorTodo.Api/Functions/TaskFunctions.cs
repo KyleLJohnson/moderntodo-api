@@ -45,6 +45,10 @@ public class TaskFunctions
         if (task is null || string.IsNullOrWhiteSpace(task.Title))
             return req.CreateResponse(HttpStatusCode.BadRequest);
 
+        if (string.IsNullOrWhiteSpace(task.TaskTime) ||
+            !TimeOnly.TryParseExact(task.TaskTime, "HH:mm", out _))
+            return req.CreateResponse(HttpStatusCode.BadRequest);
+
         var created = await _repo.CreateAsync(task);
         var response = await OkJson(req, created);
         response.StatusCode = HttpStatusCode.Created;
