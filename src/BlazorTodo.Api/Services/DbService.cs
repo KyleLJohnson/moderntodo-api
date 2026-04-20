@@ -20,7 +20,7 @@ public class DbService
         _logger = logger;
     }
 
-    public async Task<SqliteConnection> GetOpenConnectionAsync()
+    public virtual async Task<SqliteConnection> GetOpenConnectionAsync()
     {
         if (_dbPath is null)
             await EnsureDatabaseAsync();
@@ -30,7 +30,7 @@ public class DbService
         return connection;
     }
 
-    public async Task PersistAsync()
+    public virtual async Task PersistAsync()
     {
         if (_dbPath is null) return;
 
@@ -84,19 +84,31 @@ public class DbService
     {
         await using var connection = new SqliteConnection($"Data Source={_dbPath}");
         await connection.OpenAsync();
-        var sql = """
+        var createSql = """
             CREATE TABLE IF NOT EXISTS Tasks (
                 Id          INTEGER PRIMARY KEY AUTOINCREMENT,
                 Title       TEXT    NOT NULL,
                 Description TEXT,
                 DueDate     TEXT,
+                TaskTime    TEXT,
                 Priority    INTEGER NOT NULL DEFAULT 1,
                 IsCompleted INTEGER NOT NULL DEFAULT 0,
                 CreatedAt   TEXT    NOT NULL
             );
             """;
         await using var cmd = connection.CreateCommand();
-        cmd.CommandText = sql;
+        cmd.CommandText = createSql;
         await cmd.ExecuteNonQueryAsync();
+
+        // Migrate existing databases that do not yet have the TaskTime column.
+        await using var checkCmd = connection.CreateCommand();
+        checkCmd.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Tasks') WHERE name = 'TaskTime';";
+        var columnCount = (long)(await checkCmd.ExecuteScalarAsync() ?? 0L);
+        if (columnCount == 0)
+        {
+            await using var migrateCmd = connection.CreateCommand();
+            migrateCmd.CommandText = "ALTER TABLE Tasks ADD COLUMN TaskTime TEXT;";
+            await migrateCmd.ExecuteNonQueryAsync();
+        }
     }
 }

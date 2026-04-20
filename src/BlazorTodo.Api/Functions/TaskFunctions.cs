@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
@@ -18,6 +19,10 @@ public class TaskFunctions
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         PropertyNameCaseInsensitive = true,
     };
+
+    // Accepts HH:mm or HH:mm:ss (24-hour clock)
+    private static readonly Regex TaskTimeRegex =
+        new(@"^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$", RegexOptions.Compiled);
 
     public TaskFunctions(TaskRepository repo, ILogger<TaskFunctions> logger)
     {
@@ -45,6 +50,9 @@ public class TaskFunctions
         if (task is null || string.IsNullOrWhiteSpace(task.Title))
             return req.CreateResponse(HttpStatusCode.BadRequest);
 
+        if (!IsValidTaskTime(task.TaskTime))
+            return req.CreateResponse(HttpStatusCode.BadRequest);
+
         var created = await _repo.CreateAsync(task);
         var response = await OkJson(req, created);
         response.StatusCode = HttpStatusCode.Created;
@@ -60,6 +68,9 @@ public class TaskFunctions
         if (task is null || string.IsNullOrWhiteSpace(task.Title))
             return req.CreateResponse(HttpStatusCode.BadRequest);
 
+        if (!IsValidTaskTime(task.TaskTime))
+            return req.CreateResponse(HttpStatusCode.BadRequest);
+
         var updated = await _repo.UpdateAsync(id, task);
         if (updated is null) return req.CreateResponse(HttpStatusCode.NotFound);
         return await OkJson(req, updated);
@@ -72,6 +83,18 @@ public class TaskFunctions
     {
         var deleted = await _repo.DeleteAsync(id);
         return req.CreateResponse(deleted ? HttpStatusCode.NoContent : HttpStatusCode.NotFound);
+    }
+
+    /// <summary>
+    /// Returns true when <paramref name="taskTime"/> is null/empty (optional field)
+    /// or when it matches the HH:mm or HH:mm:ss 24-hour format.
+    /// </summary>
+    public static bool IsValidTaskTime(string? taskTime)
+    {
+        if (string.IsNullOrWhiteSpace(taskTime))
+            return true;
+
+        return TaskTimeRegex.IsMatch(taskTime);
     }
 
     private static async Task<HttpResponseData> OkJson<T>(HttpRequestData req, T data)

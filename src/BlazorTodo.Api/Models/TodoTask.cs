@@ -13,6 +13,7 @@ public class TodoTask
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public DateTime? DueDate { get; set; }
+    public string? TaskTime { get; set; }
     public Priority Priority { get; set; } = Priority.Medium;
     public bool IsCompleted { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
