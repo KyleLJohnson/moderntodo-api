@@ -84,7 +84,7 @@ public class DbService
     {
         await using var connection = new SqliteConnection($"Data Source={_dbPath}");
         await connection.OpenAsync();
-        var sql = """
+        var createSql = """
             CREATE TABLE IF NOT EXISTS Tasks (
                 Id          INTEGER PRIMARY KEY AUTOINCREMENT,
                 Title       TEXT    NOT NULL,
@@ -92,11 +92,28 @@ public class DbService
                 DueDate     TEXT,
                 Priority    INTEGER NOT NULL DEFAULT 1,
                 IsCompleted INTEGER NOT NULL DEFAULT 0,
-                CreatedAt   TEXT    NOT NULL
+                CreatedAt   TEXT    NOT NULL,
+                CompletedAt TEXT
             );
             """;
         await using var cmd = connection.CreateCommand();
-        cmd.CommandText = sql;
+        cmd.CommandText = createSql;
         await cmd.ExecuteNonQueryAsync();
+
+        // Migrate existing databases that may not have the CompletedAt column
+        await using var pragmaCmd = connection.CreateCommand();
+        pragmaCmd.CommandText = "PRAGMA table_info(Tasks);";
+        await using var reader = await pragmaCmd.ExecuteReaderAsync();
+        bool hasCompletedAt = false;
+        while (await reader.ReadAsync())
+        {
+            if (reader.GetString(1) == "CompletedAt") { hasCompletedAt = true; break; }
+        }
+        if (!hasCompletedAt)
+        {
+            await using var migrateCmd = connection.CreateCommand();
+            migrateCmd.CommandText = "ALTER TABLE Tasks ADD COLUMN CompletedAt TEXT;";
+            await migrateCmd.ExecuteNonQueryAsync();
+        }
     }
 }

@@ -16,4 +16,5 @@ public class TodoTask
     public Priority Priority { get; set; } = Priority.Medium;
     public bool IsCompleted { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? CompletedAt { get; set; }
 }

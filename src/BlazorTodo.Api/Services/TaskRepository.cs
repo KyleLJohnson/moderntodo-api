@@ -28,11 +28,12 @@ public class TaskRepository
     public async Task<TodoTask> CreateAsync(TodoTask task)
     {
         task.CreatedAt = DateTime.UtcNow;
+        task.CompletedAt = task.IsCompleted ? DateTime.UtcNow : null;
         await using var conn = await _db.GetOpenConnectionAsync();
         var id = await conn.ExecuteScalarAsync<int>(
             """
-            INSERT INTO Tasks (Title, Description, DueDate, Priority, IsCompleted, CreatedAt)
-            VALUES (@Title, @Description, @DueDate, @Priority, @IsCompleted, @CreatedAt);
+            INSERT INTO Tasks (Title, Description, DueDate, Priority, IsCompleted, CreatedAt, CompletedAt)
+            VALUES (@Title, @Description, @DueDate, @Priority, @IsCompleted, @CreatedAt, @CompletedAt);
             SELECT last_insert_rowid();
             """,
             task);
@@ -51,7 +52,8 @@ public class TaskRepository
                 Description = @Description,
                 DueDate     = @DueDate,
                 Priority    = @Priority,
-                IsCompleted = @IsCompleted
+                IsCompleted = @IsCompleted,
+                CompletedAt = CASE WHEN @IsCompleted = 1 THEN COALESCE(CompletedAt, @Now) ELSE NULL END
             WHERE Id = @Id
             """,
             new
@@ -61,6 +63,7 @@ public class TaskRepository
                 updated.DueDate,
                 updated.Priority,
                 updated.IsCompleted,
+                Now = DateTime.UtcNow,
                 Id = id
             });
 
