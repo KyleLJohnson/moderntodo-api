@@ -1,4 +1,6 @@
+using System.Data;
 using Azure.Storage.Blobs;
+using Dapper;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 
@@ -18,6 +20,20 @@ public class DbService
     {
         _blobServiceClient = blobServiceClient;
         _logger = logger;
+        SqlMapper.AddTypeHandler(new UtcDateTimeHandler());
+    }
+
+    private sealed class UtcDateTimeHandler : SqlMapper.TypeHandler<DateTime>
+    {
+        public override DateTime Parse(object value)
+        {
+            if (value is null or DBNull)
+                return DateTime.MinValue;
+            return DateTime.SpecifyKind(Convert.ToDateTime(value), DateTimeKind.Utc);
+        }
+
+        public override void SetValue(IDbDataParameter parameter, DateTime value) =>
+            parameter.Value = value.ToUniversalTime().ToString("O");
     }
 
     public async Task<SqliteConnection> GetOpenConnectionAsync()
